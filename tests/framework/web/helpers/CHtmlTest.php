@@ -20,6 +20,74 @@ class CHtmlTest extends CTestCase
 		Yii::app()->clientScript->reset();
 	}
 
+	/* listData tests */
+
+	public static function providerListData()
+	{
+		return array(
+			// a null value field is listed under '', the key PHP 7 used for a null offset
+			array(
+				array(array('id'=>null,'name'=>'none'),array('id'=>1,'name'=>'one'),array('id'=>'2','name'=>'two')),
+				'',
+				array(''=>'none',1=>'one',2=>'two'),
+			),
+			// an empty string value keeps its own key
+			array(
+				array(array('id'=>'','name'=>'empty'),array('id'=>1,'name'=>'one')),
+				'',
+				array(''=>'empty',1=>'one'),
+			),
+			// grouped: a null value inside a group, and a null group with a null value
+			array(
+				array(
+					array('id'=>null,'name'=>'none','group'=>'g'),
+					array('id'=>1,'name'=>'one','group'=>'g'),
+					array('id'=>null,'name'=>'ungrouped','group'=>null),
+				),
+				'group',
+				array('g'=>array(''=>'none',1=>'one'),''=>'ungrouped'),
+			),
+		);
+	}
+
+	/**
+	 * @dataProvider providerListData
+	 */
+	public function testListData($models,$groupField,$assertion)
+	{
+		$this->assertSame($assertion,CHtml::listData($models,'id','name',$groupField));
+	}
+
+	public function testListDataWithNullValueRaisesNoDeprecation()
+	{
+		// PHP 8.5 deprecates a null array offset; a custom handler sees it whatever error_reporting() masks
+		$deprecations=array();
+		set_error_handler(function($code,$message) use(&$deprecations) {
+			if($code===E_DEPRECATED || $code===E_USER_DEPRECATED)
+				$deprecations[]=$message;
+			return true;
+		});
+		try
+		{
+			$models=array(array('id'=>null,'name'=>'none','group'=>null),array('id'=>null,'name'=>'grouped','group'=>'g'));
+			CHtml::listData($models,'id','name');
+			CHtml::listData($models,'id','name','group');
+		}
+		catch(Exception $e)
+		{
+			restore_error_handler();
+			throw $e;
+		}
+		restore_error_handler();
+		$this->assertSame(array(),$deprecations);
+	}
+
+	public function testListDataWithObjects()
+	{
+		$models=array((object)array('id'=>null,'name'=>'none'),(object)array('id'=>3,'name'=>'three'));
+		$this->assertSame(array(''=>'none',3=>'three'),CHtml::listData($models,'id','name'));
+	}
+
 	/* HTML characters encode/decode tests */
 
 	public static function providerEncodeArray()
