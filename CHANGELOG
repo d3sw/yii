@@ -1,12 +1,18 @@
                    Yii Framework Change Log
                    ========================
 
+Version 1.1.32.2 (d3sw) November 1, 2026
+----------------------------------------
+
+- Enh #4598: Updated HTMLPurifier to version 4.19.1 for PHP 8.5 support (marcovtwout)
+- Chg: yiilite.php carries the CHtml::listData fix and reports the same version as YiiBase (d3sw)
+
 Version 1.1.32.1 (d3sw) November 1, 2026
 ----------------------------------------
 
 Yii 1.1.32 plus the PHP 8.5 fixes merged on yiisoft/yii master for 1.1.33,
 cherry-picked unchanged (see the "cherry picked from" trailers), and one fix
-of ours that is proposed upstream. Dropped again when 1.1.33 is released.
+of ours, to be proposed upstream. Dropped again when 1.1.33 is released.
 
 - Enh #4598: Fix deprecated non-canonical casts to canonical forms (ruslan)
 - Enh #4598: Fix PHP 8.5 imagedestroy() deprecation in CCaptchaAction (marcovtwout)
