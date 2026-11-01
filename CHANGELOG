@@ -1,6 +1,19 @@
                    Yii Framework Change Log
                    ========================
 
+Version 1.1.32.1 (d3sw) November 1, 2026
+----------------------------------------
+
+Yii 1.1.32 plus the PHP 8.5 fixes merged on yiisoft/yii master for 1.1.33,
+cherry-picked unchanged (see the "cherry picked from" trailers), and one fix
+of ours that is proposed upstream. Dropped again when 1.1.33 is released.
+
+- Enh #4598: Fix deprecated non-canonical casts to canonical forms (ruslan)
+- Enh #4598: Fix PHP 8.5 imagedestroy() deprecation in CCaptchaAction (marcovtwout)
+- Enh #4598: Fix PHP 8.5 null array offset deprecation in CPhpAuthManager (marcovtwout)
+- Enh #4598: Fix PHP 8.5 null array offset deprecation in CActiveFinder (marcovtwout)
+- Bug: Fix PHP 8.5 null array offset deprecation in CHtml::listData (d3sw)
+
 Version 1.1.32 December 23, 2025
 --------------------------------
 
