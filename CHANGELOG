@@ -1,6 +1,12 @@
                    Yii Framework Change Log
                    ========================
 
+Version 1.1.32.3 (d3sw) November 2, 2026
+----------------------------------------
+
+- Chg: CHtmlPurifier keeps HTMLPurifier 4.15's image-length defaults (HTML.MaxImgLength 1200, CSS.MaxImgLength '1200px'),
+  which 4.19 set to null, for callers that do not set these options, so purified <img> output is unchanged (d3sw)
+
 Version 1.1.32.2 (d3sw) November 1, 2026
 ----------------------------------------
 

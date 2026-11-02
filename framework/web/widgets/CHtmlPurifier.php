@@ -123,7 +123,21 @@ class CHtmlPurifier extends COutputProcessor
 	 */
 	protected function createNewHtmlPurifierInstance()
 	{
-		$this->_purifier=new HTMLPurifier($this->getOptions());
+		$options=$this->getOptions();
+		if($options===null)
+			$options=array();
+		if(is_array($options))
+		{
+			// HTMLPurifier 4.19 dropped the image-length defaults of 4.15 (HTML.MaxImgLength 1200,
+			// CSS.MaxImgLength '1200px'); keep them so purified output does not change for callers
+			// that do not set these options themselves (d3sw 1.1.32.3).
+			foreach(array('HTML.MaxImgLength'=>1200,'CSS.MaxImgLength'=>'1200px') as $key=>$value)
+			{
+				if(!array_key_exists($key,$options))
+					$options[$key]=$value;
+			}
+		}
+		$this->_purifier=new HTMLPurifier($options);
 		$this->_purifier->config->set('Cache.SerializerPath',Yii::app()->getRuntimePath());
 		return $this->_purifier;
 	}
