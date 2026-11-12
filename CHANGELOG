@@ -1,6 +1,14 @@
                    Yii Framework Change Log
                    ========================
 
+Version 1.1.32.5 (d3sw) November 12, 2026
+-----------------------------------------
+
+- Chg: With CSS.MaxImgLength set, CHtmlPurifier changes a CSS width or height of an <img> that is over the limit to the limit
+  (width:2000px becomes width:1200px) and no longer drops it. CHtmlPurifier::allowImgPercentLengths() is now adjustImgLengths() (d3sw)
+- Bug: CHtmlPurifier threw an Error on a CSS width or height when CSS.AllowedProperties or CSS.ForbiddenProperties removed
+  those properties, and put them back for an <img> (d3sw)
+
 Version 1.1.32.4 (d3sw) November 12, 2026
 -----------------------------------------
 
