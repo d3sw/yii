@@ -152,8 +152,8 @@ class CHtmlPurifier extends COutputProcessor
 	 * <li>a width over the limit becomes the limit (width:2000px becomes width:1200px), and the image's height,
 	 *   in the style and as an attribute, is removed, so the browser keeps the image's proportions.</li>
 	 * </ul>
-	 * A height over the limit, a percentage over 100% and a length that cannot be compared with the limit (em, ex)
-	 * are still dropped. A property that CSS.AllowedProperties or CSS.ForbiddenProperties removed stays removed.
+	 * A height over the limit, a percentage over 100% and a length in a unit that has no fixed size (em, ex, rem,
+	 * ch, vw, vh and the like) are still dropped. A property that CSS.AllowedProperties or CSS.ForbiddenProperties removed stays removed.
 	 *
 	 * The change is made on the configuration's loaded CSS and HTML definitions, not on the cached ones. Loading
 	 * them finalizes the configuration: set every directive, 'Cache.SerializerPath' included, before the call.
@@ -166,11 +166,14 @@ class CHtmlPurifier extends COutputProcessor
 		if($max===null)
 			return;
 		$definition=$config->getCSSDefinition();
+		// as the definition does for its own rules, so that "50% !important" is read as 50%
+		$important=$config->get('CSS.AllowImportant');
 		// the definition's own rule still validates everything else, for img and for the other elements
 		if(isset($definition->info['height']))
 		{
 			$own=$definition->info['height'];
-			$definition->info['height']=new HTMLPurifier_AttrDef_Switch('img',new CHtmlPurifierImgLength($own),$own);
+			$definition->info['height']=new HTMLPurifier_AttrDef_Switch('img',
+				new HTMLPurifier_AttrDef_CSS_ImportantDecorator(new CHtmlPurifierImgLength($own),$important),$own);
 		}
 		if(!isset($definition->info['width']))
 			return;
@@ -182,7 +185,8 @@ class CHtmlPurifier extends COutputProcessor
 			$html->info['img']->attr_transform_post[]=$limited;
 		}
 		$own=$definition->info['width'];
-		$definition->info['width']=new HTMLPurifier_AttrDef_Switch('img',new CHtmlPurifierImgLength($own,$limited),$own);
+		$definition->info['width']=new HTMLPurifier_AttrDef_Switch('img',
+			new HTMLPurifier_AttrDef_CSS_ImportantDecorator(new CHtmlPurifierImgLength($own,$limited),$important),$own);
 	}
 }
 
@@ -277,7 +281,7 @@ class CHtmlPurifierImgWidthLimited extends HTMLPurifier_AttrTransform
 		if(strlen($string)<2)
 			return false;
 		$length=HTMLPurifier_Length::make($string);
-		// compareTo() is false for a unit that has no fixed size (em, ex)
+		// compareTo() is false for a unit that has no fixed size (em, ex, rem, vw and the like)
 		if(!$length->isValid() || !($length->compareTo($this->max)>0))
 			return false;
 		$this->token=$context->get('CurrentToken',true);

@@ -1,6 +1,11 @@
                    Yii Framework Change Log
                    ========================
 
+Version 1.1.32.7 (d3sw) November 12, 2026
+-----------------------------------------
+
+- Bug: CHtmlPurifier's rules for the CSS width and height of an <img> did not apply to a value with !important (d3sw)
+
 Version 1.1.32.6 (d3sw) November 12, 2026
 -----------------------------------------
 
