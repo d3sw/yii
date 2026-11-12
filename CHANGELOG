@@ -1,6 +1,12 @@
                    Yii Framework Change Log
                    ========================
 
+Version 1.1.32.6 (d3sw) November 12, 2026
+-----------------------------------------
+
+- Chg: With CSS.MaxImgLength set, CHtmlPurifier removes the height (CSS and attribute) of an <img> whose CSS width it limited,
+  so the image keeps its proportions, and drops a CSS height over the limit again (1.1.32.5 changed it to the limit) (d3sw)
+
 Version 1.1.32.5 (d3sw) November 12, 2026
 -----------------------------------------
 

@@ -149,14 +149,14 @@ class CHtmlPurifier extends COutputProcessor
 	 * <ul>
 	 * <li>a percentage from 0% to 100% is kept: rich-text editors write style="width:50%" for an image sized
 	 *   relative to its container, and such a percentage cannot make the image wider than its container;</li>
-	 * <li>a length over the limit becomes the limit (width:2000px becomes width:1200px), as HTML.MaxImgLength
-	 *   does for the width and height attributes.</li>
+	 * <li>a width over the limit becomes the limit (width:2000px becomes width:1200px), and the image's height,
+	 *   in the style and as an attribute, is removed, so the browser keeps the image's proportions.</li>
 	 * </ul>
-	 * A larger percentage and a length that cannot be compared with the limit (em, ex) are still dropped. A
-	 * property that CSS.AllowedProperties or CSS.ForbiddenProperties removed stays removed.
+	 * A height over the limit, a percentage over 100% and a length that cannot be compared with the limit (em, ex)
+	 * are still dropped. A property that CSS.AllowedProperties or CSS.ForbiddenProperties removed stays removed.
 	 *
-	 * The change is made on the configuration's loaded CSS definition, not on the cached one. Loading the
-	 * definition finalizes the configuration: set every directive, 'Cache.SerializerPath' included, before the call.
+	 * The change is made on the configuration's loaded CSS and HTML definitions, not on the cached ones. Loading
+	 * them finalizes the configuration: set every directive, 'Cache.SerializerPath' included, before the call.
 	 * @param HTMLPurifier_Config $config the configuration to change
 	 * @since 1.1.32.5 (d3sw)
 	 */
@@ -166,20 +166,29 @@ class CHtmlPurifier extends COutputProcessor
 		if($max===null)
 			return;
 		$definition=$config->getCSSDefinition();
-		foreach(array('width','height') as $property)
+		// the definition's own rule still validates everything else, for img and for the other elements
+		if(isset($definition->info['height']))
 		{
-			if(!isset($definition->info[$property]))
-				continue;
-			// the definition's own rule still validates everything else, for img and for the other elements
-			$own=$definition->info[$property];
-			$definition->info[$property]=new HTMLPurifier_AttrDef_Switch('img',new CHtmlPurifierImgLength($own,$max),$own);
+			$own=$definition->info['height'];
+			$definition->info['height']=new HTMLPurifier_AttrDef_Switch('img',new CHtmlPurifierImgLength($own),$own);
 		}
+		if(!isset($definition->info['width']))
+			return;
+		$html=$config->getHTMLDefinition();
+		$limited=null;
+		if(isset($html->info['img']))
+		{
+			$limited=new CHtmlPurifierImgWidthLimited($max);
+			$html->info['img']->attr_transform_post[]=$limited;
+		}
+		$own=$definition->info['width'];
+		$definition->info['width']=new HTMLPurifier_AttrDef_Switch('img',new CHtmlPurifierImgLength($own,$limited),$own);
 	}
 }
 
 /**
  * CHtmlPurifierImgLength validates the CSS width or height of an img under CSS.MaxImgLength: what the CSS
- * definition's own rule accepts, a percentage from 0% to 100%, and a length over the limit as the limit.
+ * definition's own rule accepts, a percentage from 0% to 100% and, for a width, a length over the limit as the limit.
  *
  * @package system.web.widgets
  * @since 1.1.32.5 (d3sw)
@@ -191,9 +200,9 @@ class CHtmlPurifierImgLength extends HTMLPurifier_AttrDef
 	 */
 	protected $own;
 	/**
-	 * @var HTMLPurifier_Length the limit
+	 * @var CHtmlPurifierImgWidthLimited|null what turns a length over the limit into the limit; null drops it
 	 */
-	protected $max;
+	protected $limited;
 	/**
 	 * @var HTMLPurifier_AttrDef_CSS_Percentage
 	 */
@@ -201,12 +210,13 @@ class CHtmlPurifierImgLength extends HTMLPurifier_AttrDef
 
 	/**
 	 * @param HTMLPurifier_AttrDef $own the CSS definition's own rule for the property
-	 * @param string $max the limit, the value of CSS.MaxImgLength
+	 * @param CHtmlPurifierImgWidthLimited|null $limited for a width: the img transform that removes the height
+	 * of an image whose width was limited. Null (a height) drops a length over the limit.
 	 */
-	public function __construct($own,$max)
+	public function __construct($own,$limited=null)
 	{
 		$this->own=$own;
-		$this->max=HTMLPurifier_Length::make($max);
+		$this->limited=$limited;
 		$this->percentage=new HTMLPurifier_AttrDef_CSS_Percentage(true);
 	}
 
@@ -224,13 +234,80 @@ class CHtmlPurifierImgLength extends HTMLPurifier_AttrDef
 		$result=$this->percentage->validate($string,$config,$context);
 		if($result!==false)
 			return (float)$result>100 ? false : $result;
-		$string=$this->parseCDATA($string);
+		if($this->limited===null)
+			return false;
+		return $this->limited->limit($this->parseCDATA($string),$context);
+	}
+}
+
+/**
+ * CHtmlPurifierImgWidthLimited turns a CSS width over CSS.MaxImgLength into the limit and, as a transform that
+ * runs after an img's attributes are validated, removes the height of that image from its style and its height
+ * attribute: a limited width with the height left as it was would change the image's proportions.
+ *
+ * @package system.web.widgets
+ * @since 1.1.32.6 (d3sw)
+ */
+class CHtmlPurifierImgWidthLimited extends HTMLPurifier_AttrTransform
+{
+	/**
+	 * @var HTMLPurifier_Length the limit
+	 */
+	protected $max;
+	/**
+	 * @var HTMLPurifier_Token|null the img whose width was limited, until its transform has run
+	 */
+	protected $token;
+
+	/**
+	 * @param string $max the limit, the value of CSS.MaxImgLength
+	 */
+	public function __construct($max)
+	{
+		$this->max=HTMLPurifier_Length::make($max);
+	}
+
+	/**
+	 * @param string $string the width, already trimmed
+	 * @param HTMLPurifier_Context $context
+	 * @return bool|string the limit when the width is a length over it, false otherwise
+	 */
+	public function limit($string,$context)
+	{
 		if(strlen($string)<2)
 			return false;
 		$length=HTMLPurifier_Length::make($string);
 		// compareTo() is false for a unit that has no fixed size (em, ex)
-		if($length->isValid() && $length->compareTo($this->max)>0)
-			return $this->max->toString();
-		return false;
+		if(!$length->isValid() || !($length->compareTo($this->max)>0))
+			return false;
+		$this->token=$context->get('CurrentToken',true);
+		return $this->max->toString();
+	}
+
+	/**
+	 * @param array $attr
+	 * @param HTMLPurifier_Config $config
+	 * @param HTMLPurifier_Context $context
+	 * @return array
+	 */
+	public function transform($attr,$config,$context)
+	{
+		$token=$this->token;
+		$this->token=null;
+		if($token===null || $token!==$context->get('CurrentToken',true))
+			return $attr;
+		unset($attr['height']);
+		if(isset($attr['style']))
+		{
+			// a validated style is a list of "property:value;"
+			$kept='';
+			foreach(explode(';',$attr['style']) as $declaration)
+			{
+				if($declaration!=='' && strncmp($declaration,'height:',7)!==0)
+					$kept.=$declaration.';';
+			}
+			$attr['style']=$kept;
+		}
+		return $attr;
 	}
 }
