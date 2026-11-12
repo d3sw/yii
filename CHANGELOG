@@ -1,6 +1,13 @@
                    Yii Framework Change Log
                    ========================
 
+Version 1.1.32.4 (d3sw) November 12, 2026
+-----------------------------------------
+
+- Chg: CHtmlPurifier accepts a percentage from 0% to 100% for the CSS width and height of an <img> when CSS.MaxImgLength is set;
+  HTMLPurifier accepts only a length up to the limit or 'auto' there. CHtmlPurifier::allowImgPercentLengths() does the same for
+  a configuration built outside CHtmlPurifier (d3sw)
+
 Version 1.1.32.3 (d3sw) November 2, 2026
 ----------------------------------------
 

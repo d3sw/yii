@@ -41,7 +41,7 @@ class YiiBase
 	private static $_logger;
 	public static function getVersion()
 	{
-		return '1.1.32.3';
+		return '1.1.32.4';
 	}
 	public static function createWebApplication($config=null)
 	{

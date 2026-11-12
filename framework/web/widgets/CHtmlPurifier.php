@@ -139,6 +139,60 @@ class CHtmlPurifier extends COutputProcessor
 		}
 		$this->_purifier=new HTMLPurifier($options);
 		$this->_purifier->config->set('Cache.SerializerPath',Yii::app()->getRuntimePath());
+		self::allowImgPercentLengths($this->_purifier->config);
 		return $this->_purifier;
+	}
+
+	/**
+	 * Lets the CSS width and height of an img be a percentage from 0% to 100% when CSS.MaxImgLength is set.
+	 * HTMLPurifier then accepts only a length up to that limit or 'auto' there, so it drops style="width:50%", which
+	 * rich-text editors write when an image is sized relative to its container. A percentage of at most 100%
+	 * cannot make the image wider than its container, so the limit keeps its purpose (d3sw 1.1.32.4).
+	 *
+	 * The change is made on the configuration's loaded CSS definition, not on the cached one. Loading the
+	 * definition finalizes the configuration: set every directive, 'Cache.SerializerPath' included, before the call.
+	 * @param HTMLPurifier_Config $config the configuration to change
+	 */
+	public static function allowImgPercentLengths($config)
+	{
+		$max=$config->get('CSS.MaxImgLength');
+		if($max===null)
+			return;
+		$definition=$config->getCSSDefinition();
+		// the definition's own rule still validates everything else, for img and for the other elements
+		$own=$definition->info['width'];
+		$definition->info['width']=$definition->info['height']=new HTMLPurifier_AttrDef_Switch(
+			'img',
+			new HTMLPurifier_AttrDef_CSS_Composite(array(new CHtmlPurifierImgPercentage(),$own)),
+			$own
+		);
+	}
+}
+
+/**
+ * CHtmlPurifierImgPercentage validates a CSS percentage from 0% to 100% for the width and height of an img.
+ *
+ * @package system.web.widgets
+ * @since 1.1.32.4 (d3sw)
+ */
+class CHtmlPurifierImgPercentage extends HTMLPurifier_AttrDef_CSS_Percentage
+{
+	public function __construct()
+	{
+		parent::__construct(true);
+	}
+
+	/**
+	 * @param string $string
+	 * @param HTMLPurifier_Config $config
+	 * @param HTMLPurifier_Context $context
+	 * @return bool|string
+	 */
+	public function validate($string,$config,$context)
+	{
+		$result=parent::validate($string,$config,$context);
+		if($result===false || (float)$result>100)
+			return false;
+		return $result;
 	}
 }
